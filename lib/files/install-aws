@@ -1,0 +1,21 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+# idempotence
+which aws && exit 0
+
+cd
+mkdir -p zz_packages
+cd zz_packages
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+[[ -d ${HOME}/zz_packages/aws/ ]] && rm -rf "${HOME}/zz_packages/aws/"
+rm "${HOME}/zz_packages/awscliv2.zip"

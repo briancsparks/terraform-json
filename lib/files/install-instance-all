@@ -1,0 +1,106 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+
+
+
+
+# EX: chownmod ubuntu:ubuntu 0644 /home/ubuntu/.bash_aliases
+chownmod() {
+  user="$1"; shift
+  mode="$1"; shift
+  sudo chown "$user" $@
+  sudo chmod "$mode" $@
+}
+
+# ------------------------------------------------------------------------------------------------
+# bash-aliases
+cat << EOF >> /home/ubuntu/.bash_aliases
+alias vim='vim -p'
+alias tree='tree -I '\''node_modules|bower_components|ppds|_tmp|cmake-build|doxygen-build'\'''
+alias treesm='tree -I '\''node_modules|bower_components|ppds|_tmp|cmake-build|doxygen-build|build'\'''
+
+EOF
+
+chownmod ubuntu:ubuntu 0644 /home/ubuntu/.bash_aliases
+
+
+# ------------------------------------------------------------------------------------------------
+# functions
+cat << 'EOF' >> /home/ubuntu/.bash_functions
+
+mcd ()
+{
+    mkdir -p $@ && cd $@
+}
+
+gowork() {
+  cd "${HOME}/dev/cdr0-stack/foundation/work"
+}
+
+EOF
+
+chownmod ubuntu:ubuntu 0644 /home/ubuntu/.bash_functions
+
+
+# ------------------------------------------------------------------------------------------------
+# Sourcing .bash_functions
+cat << 'EOF' >> /home/ubuntu/.bashrc
+if [ -f ~/.bash_functions ]; then
+    . ~/.bash_functions
+fi
+EOF
+
+
+# ------------------------------------------------------------------------------------------------
+# vimrc
+cat << 'EOF' >> /home/ubuntu/.vimrc
+:let mapleader = ","
+:set nocompatible
+
+:set hidden
+:set showcmd
+:set nu
+:syntax on
+:set ruler
+:set clipboard=unnamed
+":set autoread
+highlight StatusLine ctermfg=blue ctermbg=yellow
+
+filetype plugin indent on
+
+" Whitespace
+:set nowrap
+:set tabstop=2
+:set shiftwidth=2
+:set expandtab
+:set smartindent
+:set backspace=indent,eol,start
+
+" Searching
+:set hlsearch
+:set incsearch
+:set ignorecase
+:set smartcase
+
+" Next / Previous tab
+:map <F7> :tabp<CR>
+:map <F8> :tabn<CR>
+
+" Open file from the same dir
+:map <Leader>e :e <C-R>=expand("%:p:h") . '/'<CR>
+
+" Clear search
+nmap <silent> ,. :nohlsearch<CR>
+
+:color desert
+
+EOF
+
+chownmod ubuntu:ubuntu 0644 /home/ubuntu/.vimrc
+

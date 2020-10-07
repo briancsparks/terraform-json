@@ -1,0 +1,36 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+
+
+# ----------------------------------------------------------------------------------------
+echo -n "Install Terraform? "
+read -r INSTALL_IT
+
+if [[ $INSTALL_IT == "y" ]]; then
+  sudo aws s3 cp s3://quick-net/deploy/cdr0-net/terraform_0.12.26_linux_amd64 /usr/local/bin/terraform
+  sudo chmod +x /usr/local/bin/terraform
+  DID_SOMETHING="1"
+fi
+
+# ----------------------------------------------------------------------------------------
+echo -n "Install git? "
+read -r INSTALL_IT
+
+if [[ $INSTALL_IT == "y" ]]; then
+  ssh-keygen -F github.com || ssh-keyscan github.com >> "${HOME}/.ssh/known_hosts"
+  sudo apt-get install -y git
+  DID_SOMETHING="1"
+fi
+
+# ----------------------------------------------------------------------------------------
+if [[ -z $DID_SOMETHING ]]; then
+  echo "Did not find an action for you. Try npx imstall:"
+  echo "      npx imstall xyz"
+fi
+

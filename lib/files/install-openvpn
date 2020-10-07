@@ -1,0 +1,221 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+
+
+
+
+
+
+
+# See https://openvpn.net/community-resources/how-to/
+
+#IFACE="ens5"
+IFACE="$(ls /sys/class/net/ | grep -E '(ens|eth)' | head -1)"
+IFACE_MAC=$(cat "/sys/class/net/${IFACE}/address")
+VPC_CIDR_URI="http://169.254.169.254/latest/meta-data/network/interfaces/macs/${IFACE_MAC}/vpc-ipv4-cidr-block"
+VPC_CIDR_RANGE=$(curl --retry 3 --silent --fail "${VPC_CIDR_URI}")
+
+
+# -----------------------------------------------------------------------------
+# Install OpenVPN from apt
+curl -sSL 'https://swupdate.openvpn.net/repos/repo-public.gpg' | sudo apt-key add -
+echo "deb http://build.openvpn.net/debian/openvpn/stable xenial main" | sudo tee -a /etc/apt/sources.list.d/openvpn-aptrepo.list
+sudo apt-get update
+sudo apt-get install -y openvpn
+
+
+# -----------------------------------------------------------------------------
+# OpenVPN config
+
+sudo tee /etc/openvpn/openvpn.conf << EOF
+mode server
+port 1194
+proto udp
+dev tun
+ca          /etc/openvpn/pki/ca.crt
+cert        /etc/openvpn/pki/server.crt
+key         /etc/openvpn/pki/server.key
+dh          /etc/openvpn/pki/dh.pem
+cipher AES-256-CBC
+auth SHA512
+server 10.8.0.0 255.255.255.0
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
+ifconfig-pool-persist ipp.txt
+keepalive 10 120
+persist-key
+persist-tun
+status openvpn-status.log
+log-append openvpn.log
+verb 3
+tls-server
+tls-crypt    /etc/openvpn/pki/pfs.key 0
+key-direction 0
+EOF
+
+
+# The client config
+sudo tee /etc/openvpn/client-openvpn.conf << EOF
+client
+dev tun
+proto udp
+ca            ${STACKNAME}-keys/ca.crt
+cert          ${STACKNAME}-keys/cdr0_common_client.crt
+key           ${STACKNAME}-keys/cdr0_common_client.key
+tls-crypt     ${STACKNAME}-keys/pfs.key 1
+tls-version-min 1.2
+tls-cipher TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256:TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256:TLS-ECDHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-256-CBC-SHA256
+cipher AES-256-CBC
+auth SHA512
+resolv-retry infinite
+auth-retry none
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+verb 3
+tls-client
+key-direction 1
+remote 54.160.20.200
+EOF
+
+## Can add to above
+#user nobody
+#group nobody
+
+## Why not
+#push "route 10.113.0.0 255.255.255.0"
+
+# -----------------------------------------------------------------------------
+# More iptables rules
+
+sudo modprobe iptable_nat
+echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
+#sudo iptables -t nat -A POSTROUTING -s "${VPC_CIDR_RANGE}" -o "${IFACE}" -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o "${IFACE}" -j MASQUERADE
+
+#iptables-save  | sudo tee /etc/iptables/rules.v4
+#ip6tables-save | sudo tee /etc/iptables/rules.v6
+
+
+# -----------------------------------------------------------------------------
+# Get certs and stuff
+sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/ca.crt                    /etc/openvpn/pki/ca.crt
+sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/issued/cdr0_server.crt    /etc/openvpn/pki/server.crt
+sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/private/cdr0_server.key   /etc/openvpn/pki/server.key
+sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/dh.pem                    /etc/openvpn/pki/dh.pem
+sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/pfs.key                   /etc/openvpn/pki/pfs.key
+
+sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/issued/cdr0_common.crt    /etc/openvpn/pki/cdr0_common_client.crt
+sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/private/cdr0_common.key   /etc/openvpn/pki/cdr0_common_client.key
+
+sudo chmod o-r /etc/openvpn/pki/*
+
+# ------------------------------------------------------------------------------
+# Bundle up the client config
+cd
+mkdir -p "openvpn/config/${STACKNAME}-keys"
+sudo cp /etc/openvpn/client-openvpn.conf                 "openvpn/config/${STACKNAME}-bastion.ovpn"
+sudo cp /etc/openvpn/pki/ca.crt                          "openvpn/config/${STACKNAME}-keys/"
+sudo cp /etc/openvpn/pki/cdr0_common_client.crt          "openvpn/config/${STACKNAME}-keys/"
+sudo cp /etc/openvpn/pki/cdr0_common_client.key          "openvpn/config/${STACKNAME}-keys/"
+sudo cp /etc/openvpn/pki/dh.pem                          "openvpn/config/${STACKNAME}-keys/"
+sudo cp /etc/openvpn/pki/pfs.key                         "openvpn/config/${STACKNAME}-keys/"
+sudo chown -R ubuntu:ubuntu openvpn
+
+# From client: scp ubuntu@ill-sh.cdr0.net:openvpn/* ${HOME}/
+
+echo ""
+echo "Now:"
+echo ""
+echo "  on the client:"
+echo ""
+echo 'cd ${HOME}/openvpn'
+echo "scpx -r ubuntu@${STACKNAME}-sh.cdr0.net:openvpn/* ./"
+echo ""
+echo "  then, on the server"
+echo ""
+echo "sudo shutdown -r now"
+echo ""
+echo "  then, after reboot:"
+echo ""
+echo "sudo sysctl -w net.ipv4.ip_forward=1 net.ipv4.conf.ens5.forwarding=1"
+echo ""
+
+
+
+## -----------------------------------------------------------------------------
+## Bundle up what the client needs
+#grab_item() { touch "$2"; sudo cp "$1" "$2"; }
+#cd
+#mkdir client-bundle && cd $_
+#mkdir -p  "${STACKNAME}-client-config/keys"
+#grab_item  /etc/openvpn/pki/client-openvpn.conf        "${STACKNAME}-client-config/${STACKNAME}-client-config.conf"
+#grab_item  /etc/openvpn/pki/ca.crt                     "${STACKNAME}-client-config/${STACKNAME}-keys/ca.crt"
+#grab_item  /etc/openvpn/pki/pfs.key                    "${STACKNAME}-client-config/${STACKNAME}-keys/pfs.key"
+#grab_item  /etc/openvpn/pki/cdr0_common_client.crt     "${STACKNAME}-client-config/${STACKNAME}-keys/cdr0_common_client.crt"
+#grab_item  /etc/openvpn/pki/cdr0_common_client.key     "${STACKNAME}-client-config/${STACKNAME}-keys/cdr0_common_client.crt"
+#
+#cd
+#
+#tar cvf  "$(find "${STACKNAME}-client-config/" -type f)"  "${STACKNAME}-client-config/*"
+
+# -----------------------------------------------------------------------------
+# Below is the scriptlet that generated the certs that are on S3
+
+
+## -----------------------------------------------------------------------------
+## Easy-RSA in intended to be run by non-privledged users, not root.
+#cd /home/ubuntu
+#curl -sSL 'https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.7/EasyRSA-3.0.7.tgz' | tar xzf -
+#mv EasyRSA-3.0.7/ cadir/
+#
+#cd cadir
+#./easyrsa init-pki
+#
+#./easyrsa build-ca                      # --- Requires pw, like "redsky", and CN like "cdr0.net VPN"
+#./easyrsa gen-dh
+#
+## --- cdr0_common becomes the req+key filenames, and is the default Subject, tho the Subject can be changed
+##     prompts for the Subject
+##     no password
+#./easyrsa gen-req cdr0_common nopass
+#./easyrsa sign-req client cdr0_common   # --- client is a magic name (the type of cert); prompts for confirmation, and ca-key passwd
+#
+#
+## --- cdr0_server becomes the req+key filenames, and is the default Subject, tho the Subject can be changed
+##     prompts for the Subject
+##     no password
+#./easyrsa gen-req cdr0_server nopass
+#./easyrsa sign-req server cdr0_server   # --- server is a magic name (the type of cert); prompts for confirmation, and ca-key passwd
+#
+#
+#sudo mkdir -p /etc/openvpn/pki
+#sudo cp ./pki/ca.crt                    /etc/openvpn/pki/ca.crt
+#sudo cp ./pki/issued/cdr0_server.crt    /etc/openvpn/pki/server.crt
+#sudo cp ./pki/private/cdr0_server.key   /etc/openvpn/pki/server.key
+#sudo cp ./pki/dh.pem                    /etc/openvpn/pki/dh.pem
+#
+#
+#openvpn --genkey --secret ./pki/pfs.key
+#sudo cp ./pki/pfs.key /etc/openvpn/pki/pfs.key
+#
+#
+#
+#./easyrsa show-req  cdr0_common
+#./easyrsa show-cert cdr0_common
+#./easyrsa show-ca
+#openssl x509 -text -noout -in pki/issued/cdr0_common.crt
+#
+
+
+
+
+
