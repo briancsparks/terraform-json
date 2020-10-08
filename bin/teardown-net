@@ -1,0 +1,22 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+[[ -f "terraform.tfstate" ]] || die "Must be in dir with terraform.tfstate"
+
+terraform destroy
+
+read -p "Continue and remove data files? " yn
+
+case $yn in
+  [Yy]* ) echo "OK";;
+  * ) exit;;
+esac
+
+rm terraform.tf*
+rm *.tf.json
+rm *.json

@@ -2,6 +2,11 @@
   "name": "terraform-json",
   "version": "1.0.0",
   "description": "",
+  "bin": {
+    "tfjson-build-net": "bin/build-net",
+    "tfjson-teardown-net": "bin/teardown-net",
+    "tfjson-to-tf-json-files": "bin/tfjson-to-tf-json-files"
+  },
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
