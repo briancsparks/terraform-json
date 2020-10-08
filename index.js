@@ -6,7 +6,7 @@
  */
 
 const _                       = require('underscore');
-const libCEConfig             = require('../../ceconfig');
+const libCEConfig             = require('ceconfig');
 
 const { cleanKey, keyMirror }     = libCEConfig.all();
 
