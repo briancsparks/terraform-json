@@ -6,10 +6,16 @@ script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
 errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
-echo "build-net"
-exit 1
+curr_dir="$(pwd)"
 
-node "$1" > ./cdr0.json
-node ../../foundation/scripts/json-to-tf-files.js ./cdr0.json
+mkdir -p build-tf && cd $_
+
+node "${curr_dir}/$1" > ./intermediate.json
+tfjson-to-tf-json-files ./intermediate.json
+
+# Initialize terraform
+if ! [[ -d .terraform ]]; then
+  terraform init
+fi
 
 terraform validate && terraform apply
