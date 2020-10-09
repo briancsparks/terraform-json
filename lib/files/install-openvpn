@@ -111,11 +111,13 @@ sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/ca.crt               
 sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/issued/cdr0_server.crt    /etc/openvpn/pki/server.crt
 sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/private/cdr0_server.key   /etc/openvpn/pki/server.key
 sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/dh.pem                    /etc/openvpn/pki/dh.pem
-sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/pfs.key                   /etc/openvpn/pki/pfs.key
 
+# The clients get these (and ca.crt)
+sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/pfs.key                   /etc/openvpn/pki/pfs.key
 sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/issued/cdr0_common.crt    /etc/openvpn/pki/cdr0_common_client.crt
 sudo aws s3 cp s3://quick-net/deploy/cdr0-net/openvpn-data/private/cdr0_common.key   /etc/openvpn/pki/cdr0_common_client.key
 
+# Only root
 sudo chmod o-r /etc/openvpn/pki/*
 
 # ------------------------------------------------------------------------------
@@ -130,7 +132,7 @@ sudo cp /etc/openvpn/pki/dh.pem                          "openvpn/config/${STACK
 sudo cp /etc/openvpn/pki/pfs.key                         "openvpn/config/${STACKNAME}-keys/"
 sudo chown -R ubuntu:ubuntu openvpn
 
-# From client: scp ubuntu@ill-sh.cdr0.net:openvpn/* ${HOME}/
+# From client: scp ubuntu@ill-sh.cdr0.net:openvpn/* ${HOME}/openvpn/
 
 echo ""
 echo "Now:"

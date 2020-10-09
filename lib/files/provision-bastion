@@ -11,13 +11,27 @@ die() { errcho "$@"; exit 1; }
 
 
 
+# ================================================================================================================
+# Gather necessary settings and data
+# ================================================================================================================
+
+# -----------------------------------------------------------------------------
+# Get CIDR
+
 IFACE="ens5"
 IFACE_MAC=$(cat /sys/class/net/${IFACE}/address)
 VPC_CIDR_URI="http://169.254.169.254/latest/meta-data/network/interfaces/macs/${IFACE_MAC}/vpc-ipv4-cidr-block"
 VPC_CIDR_RANGE=$(curl --retry 3 --silent --fail "${VPC_CIDR_URI}")
 
+
+
+# ================================================================================================================
+# Wait for instance to be ready
+# ================================================================================================================
+
 # -----------------------------------------------------------------------------
 # Wait for cloud-init to finish
+
 for ((i=0;i<120;i+=1)); do
   if grep -E 'Cloud-init.*finished.*Up.*seconds$' /var/log/cloud-init-output.log; then
     break
@@ -28,33 +42,109 @@ for ((i=0;i<120;i+=1)); do
   sleep 1
 done
 
+
+
+
+
+
+# ================================================================================================================
+# Configuration
+# ================================================================================================================
+
 # -----------------------------------------------------------------------------
 # NAT
-#sudo sysctl -q -w net.ipv4.ip_forward=1 net.ipv4.conf.${IFACE}.send_redirects=0 net.ipv4.conf.${IFACE}.forwarding=1
+
 sudo sysctl -q -w net.ipv4.ip_forward=1 net.ipv4.conf.${IFACE}.forwarding=1
 sudo iptables -A FORWARD -o ${IFACE} -j ACCEPT
 sudo iptables -A FORWARD -i ${IFACE} -m state --state RELATED,ESTABLISHED -j ACCEPT
 #sudo iptables -t nat -A POSTROUTING -o "${IFACE}" -s "${VPC_CIDR_RANGE}" -j MASQUERADE
 sudo iptables -t nat -A POSTROUTING -o "${IFACE}" -j MASQUERADE
 
-## Show it worked
-#touch /home/ubuntu/provision.log
-#sudo sysctl net.ipv4.ip_forward net.ipv4.conf.${IFACE}.send_redirects net.ipv4.conf.${IFACE}.forwarding >> /home/ubuntu/provision.log
-#sudo iptables -n -t nat -L POSTROUTING >> /home/ubuntu/provision.log
+# Show it worked
+[[ -d /home/ubuntu ]] || echo "HOME not up yet???"
+
+if [[ -d /home/ubuntu ]]; then
+  touch /home/ubuntu/provision.log
+  chown ubuntu:ubuntu /home/ubuntu/provision.log
+  chmod 0644 /home/ubuntu/provision.log
+  
+  sudo sysctl net.ipv4.ip_forward net.ipv4.conf.${IFACE}.send_redirects net.ipv4.conf.${IFACE}.forwarding >> /home/ubuntu/provision.log
+  sudo iptables -n -t nat -L POSTROUTING >> /home/ubuntu/provision.log
+fi
+
+
+
+
+
+
+
+
+# ================================================================================================================
+# Install tools
+# ================================================================================================================
+
+apt-get update
 
 # -----------------------------------------------------------------------------
+# aws-cli
+
+if ! which aws; then
+  if ! which unzip; then
+    apt-get install -y unzip
+  fi
+
+  cd /tmp/
+  curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+  unzip awscliv2.zip
+  ./aws/install
+fi
+
+
+# -----------------------------------------------------------------------------
+# iptables-persistent
+
 # Do not prompt when installing iptables-persistent
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
 
-sudo apt-get install -y iptables-persistent netfilter-persistent
+apt-get install -y iptables-persistent netfilter-persistent
 
 ## Note, to see that the ...autosave_vX worked:
 #sudo apt install debconf-utils
 #sudo debconf-get-selections | grep iptables
 
+
 # -----------------------------------------------------------------------------
-# Create a file that will save iptables.
+# nodejs + openvpn
+
+# nodejs
+curl -sSL "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" | apt-key add -
+echo "deb https://deb.nodesource.com/node_12.x $(lsb_release -cs) main" >> "/etc/apt/sources.list.d/node.list"
+
+# OpenVPN
+curl -sSL 'https://swupdate.openvpn.net/repos/repo-public.gpg' | apt-key add -
+echo "deb http://build.openvpn.net/debian/openvpn/stable $(lsb_release -cs) main" >> "/etc/apt/sources.list.d/openvpn-aptrepo.list"
+
+
+apt-get install -y --no-install-recommends nodejs openvpn
+
+
+
+
+
+
+
+
+
+
+# ================================================================================================================
+# Save helpful scripts
+# ================================================================================================================
+
+# -----------------------------------------------------------------------------
+# /home/ubuntu/bin/save-iptables
+
+# Create a script that will save iptables.
 cat << EOF >> /home/ubuntu/bin/save-iptables
 #!/bin/bash -e
 
@@ -64,10 +154,38 @@ sudo ip6tables-save | sudo tee /etc/iptables/rules.v6
 EOF
 chmod +x /home/ubuntu/bin/save-iptables
 
+# -----------------------------------------------------------------------------
+# /home/ubuntu/bin/test-bastion
+
+# Create a script that will confirm iptables critical values for bastion
+cat << EOF >> /home/ubuntu/bin/test-bastion
+#!/bin/bash -e
+
+echo "Testing bastion capabilities..."
+
+echo ""
+echo "1) The following 3 items should have value of `1`"
+echo ""
+echo "If not, run this:"
+echo "  sudo sysctl -q -w net.ipv4.ip_forward=1 net.ipv4.conf.${IFACE}.forwarding=1"
+
+echo ""
+sudo sysctl net.ipv4.ip_forward net.ipv4.conf.${IFACE}.send_redirects net.ipv4.conf.${IFACE}.forwarding
+
+echo ""
+echo "2) check it out"
+sudo iptables -n -t nat -L POSTROUTING
+EOF
+chmod +x /home/ubuntu/bin/save-iptables
+
 
 # -----------------------------------------------------------------------------
+# /home/ubuntu/bin/fix-unable-to-resolve-host
+
 # A script that will fix: "sudo: unable to resolve host ip-W-X-Y-Z"
 cat << EOF >> /home/ubuntu/bin/fix-unable-to-resolve-host
+#!/bin/bash -e
+
 echo "127.0.0.1 $(cat /etc/hostname)" | sudo tee -a /etc/hosts
 EOF
 chmod +x /home/ubuntu/bin/fix-unable-to-resolve-host

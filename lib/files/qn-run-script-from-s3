@@ -15,18 +15,30 @@ USE_SHELL="$2"
 
 [[ -n $USE_SHELL ]] || USE_SHELL="/bin/bash"
 
-if ! which unzip; then
-  sleep 10
-  sudo apt-get install -y unzip
-fi
-
-# if not aws:
+# if we do not have the `aws` command, install it
 if ! which aws; then
+
+  # To install aws, we need unzip
+  if ! which unzip; then
+    echo "Need to install unzip... (But first wait 10 sec.)"
+
+    # Allow cloud-init to finish, and maybe let machine fully boot
+    sleep 10
+
+    sudo apt-get install -y unzip
+  fi
+
+  # Use /tmp as temporary space to install the aws zip installer
   cd /tmp/
   curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
   unzip awscliv2.zip
   sudo ./aws/install
 fi
+
+echo "Using ${USE_SHELL} to execute: ${S3_PATH}..."
+
+echo "Press Ctrl-C to prevent"
+sleep 3
 
 aws s3 cp "$S3_PATH" - | $USE_SHELL
 
