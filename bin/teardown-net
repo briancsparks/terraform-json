@@ -6,8 +6,9 @@ script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
 errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
-[[ -f "terraform.tfstate" ]] || die "Must be in dir with terraform.tfstate"
+[[ -f "build-tf/terraform.tfstate" ]] || die "Must be in data dir (has build-tf/terraform.tfstate)"
 
+cd build-tf
 terraform destroy
 
 read -p "Continue and remove data files? " yn

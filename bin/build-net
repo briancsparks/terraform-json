@@ -6,16 +6,32 @@ script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
 errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
+# Run from your directory that has your `.js` files.
+#
+#  For exmaple, if you have `network.js` and `main.js`
+#
+#    - Creates (if needed) ./build-tf
+#    - Creates (if needed) ./build-tf/.terraform (as part of `terraform init`)
+#    - Runs your chosen `.js` file (i.e. `main.js`)
+#      - This produces `./build-tf/intermediate.json`
+#    - Splits `./build-tf/intermediate.json` because that's what terraform wants
+#      - So, you get `./build-tf/network.tf.json` and `./build-tf/main.tf.json`
+#    - Runs terraform to apply the stack
+
+# Remember the data dir
 curr_dir="$(pwd)"
 
+# Make work dir
 mkdir -p build-tf && cd $_
 
+# Run the users scripts, and format for terraform
 node "${curr_dir}/$1" > ./intermediate.json
 tfjson-to-tf-json-files ./intermediate.json
 
-# Initialize terraform
+# Initialize terraform, if necessary
 if ! [[ -d .terraform ]]; then
   terraform init
 fi
 
+# apply the stack
 terraform validate && terraform apply

@@ -13,6 +13,13 @@ const { cleanKey, keyMirror }     = libCEConfig.all();
 const CECONFIG                    = libCEConfig.mkCONFIG();
 //const ARGV                        = libCEConfig.mkARGV();
 
+// Helpful functions to export
+module.exports.fns = {};
+Object.assign(module.exports.fns,     require('./lib/aws'));
+Object.assign(module.exports.fns,     require('./lib/ip'));
+Object.assign(module.exports.fns,     require('./lib/ops'));
+Object.assign(module.exports.fns,     require('./lib/utils'));
+
 // TODO: Switch to ceconfig.ARGV
 const argv            = require('minimist')(process.argv.slice(2));
 const path            = require('path');
