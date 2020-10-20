@@ -34,6 +34,7 @@ VPC_CIDR_RANGE=$(curl --retry 3 --silent --fail "${VPC_CIDR_URI}")
 
 for ((i=0;i<120;i+=1)); do
   if grep -E 'Cloud-init.*finished.*Up.*seconds$' /var/log/cloud-init-output.log; then
+    sleep 2
     break
   fi
 
@@ -83,21 +84,23 @@ fi
 # Install tools
 # ================================================================================================================
 
-apt-get update
+sudo apt-get update
+
 
 # -----------------------------------------------------------------------------
 # aws-cli
 
 if ! which aws; then
   if ! which unzip; then
-    apt-get install -y unzip
+    sudo apt-get install -y unzip
   fi
 
   cd /tmp/
   curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
   unzip awscliv2.zip
-  ./aws/install
+  sudo ./aws/install
 fi
+
 
 
 # -----------------------------------------------------------------------------
@@ -107,7 +110,7 @@ fi
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
 
-apt-get install -y iptables-persistent netfilter-persistent
+sudo apt-get install -y iptables-persistent netfilter-persistent
 
 ## Note, to see that the ...autosave_vX worked:
 #sudo apt install debconf-utils
@@ -118,15 +121,16 @@ apt-get install -y iptables-persistent netfilter-persistent
 # nodejs + openvpn
 
 # nodejs
-curl -sSL "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" | apt-key add -
-echo "deb https://deb.nodesource.com/node_12.x $(lsb_release -cs) main" >> "/etc/apt/sources.list.d/node.list"
+curl -sSL "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" | sudo apt-key add -
+echo "deb https://deb.nodesource.com/node_12.x $(lsb_release -cs) main" | sudo tee -a "/etc/apt/sources.list.d/node.list"
 
 # OpenVPN
-curl -sSL 'https://swupdate.openvpn.net/repos/repo-public.gpg' | apt-key add -
-echo "deb http://build.openvpn.net/debian/openvpn/stable $(lsb_release -cs) main" >> "/etc/apt/sources.list.d/openvpn-aptrepo.list"
+curl -sSL 'https://swupdate.openvpn.net/repos/repo-public.gpg' | sudo apt-key add -
+echo "deb http://build.openvpn.net/debian/openvpn/stable $(lsb_release -cs) main" | sudo tee -a "/etc/apt/sources.list.d/openvpn-aptrepo.list"
 
+sudo apt-get update
 
-apt-get install -y --no-install-recommends nodejs openvpn
+sudo apt-get install -y --no-install-recommends nodejs openvpn
 
 
 
@@ -164,19 +168,22 @@ cat << EOF >> /home/ubuntu/bin/test-bastion
 echo "Testing bastion capabilities..."
 
 echo ""
-echo "1) The following 3 items should have value of `1`"
+echo "1) The following items should each have value of '1'"
 echo ""
 echo "If not, run this:"
 echo "  sudo sysctl -q -w net.ipv4.ip_forward=1 net.ipv4.conf.${IFACE}.forwarding=1"
 
 echo ""
-sudo sysctl net.ipv4.ip_forward net.ipv4.conf.${IFACE}.send_redirects net.ipv4.conf.${IFACE}.forwarding
+#sudo sysctl net.ipv4.ip_forward net.ipv4.conf.${IFACE}.send_redirects net.ipv4.conf.${IFACE}.forwarding
+sudo sysctl net.ipv4.ip_forward net.ipv4.conf.${IFACE}.forwarding
 
 echo ""
 echo "2) check it out"
 sudo iptables -n -t nat -L POSTROUTING
 EOF
-chmod +x /home/ubuntu/bin/save-iptables
+chmod +x /home/ubuntu/bin/test-bastion
+
+echo "/home/ubuntu/bin/test-bastion" >> "/home/ubuntu/.bashrc"
 
 
 # -----------------------------------------------------------------------------

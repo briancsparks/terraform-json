@@ -22,12 +22,12 @@ VPC_CIDR_URI="http://169.254.169.254/latest/meta-data/network/interfaces/macs/${
 VPC_CIDR_RANGE=$(curl --retry 3 --silent --fail "${VPC_CIDR_URI}")
 
 
-# -----------------------------------------------------------------------------
-# Install OpenVPN from apt
-curl -sSL 'https://swupdate.openvpn.net/repos/repo-public.gpg' | sudo apt-key add -
-echo "deb http://build.openvpn.net/debian/openvpn/stable xenial main" | sudo tee -a /etc/apt/sources.list.d/openvpn-aptrepo.list
-sudo apt-get update
-sudo apt-get install -y openvpn
+# # -----------------------------------------------------------------------------
+# # Install OpenVPN from apt
+# curl -sSL 'https://swupdate.openvpn.net/repos/repo-public.gpg' | sudo apt-key add -
+# echo "deb http://build.openvpn.net/debian/openvpn/stable xenial main" | sudo tee -a /etc/apt/sources.list.d/openvpn-aptrepo.list
+# sudo apt-get update
+# sudo apt-get install -y openvpn
 
 
 # -----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ key         /etc/openvpn/pki/server.key
 dh          /etc/openvpn/pki/dh.pem
 cipher AES-256-CBC
 auth SHA512
-server 10.8.0.0 255.255.255.0
+server 10.25.0.0 255.255.255.0
 push "redirect-gateway def1 bypass-dhcp"
 push "dhcp-option DNS 8.8.8.8"
 push "dhcp-option DNS 8.8.4.4"
@@ -83,8 +83,9 @@ remote-cert-tls server
 verb 3
 tls-client
 key-direction 1
-remote 54.160.20.200
+remote ${STACKNAME}-sh.cdr0.net
 EOF
+
 
 ## Can add to above
 #user nobody

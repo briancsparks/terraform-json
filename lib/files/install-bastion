@@ -31,7 +31,7 @@ To kick the NAT to get it going again, try:
 
 To test:
 
-  sudo sysctl net.ipv4.ip_forward net.ipv4.conf.${IFACE}.send_redirects net.ipv4.conf.${IFACE}.forwarding
+  sudo sysctl net.ipv4.ip_forward net.ipv4.conf.${IFACE}.forwarding
   sudo iptables -n -t nat -L POSTROUTING
 
 EOF
