@@ -28,6 +28,9 @@ mkdir -p build-tf && cd $_
 node "${curr_dir}/$1" > ./intermediate.json
 tfjson-to-tf-json-files ./intermediate.json
 
+# TODO: Remove intermediate.json
+rm intermediate.json
+
 # Initialize terraform, if necessary
 if ! [[ -d .terraform ]]; then
   terraform init
@@ -35,3 +38,6 @@ fi
 
 # apply the stack
 terraform validate && terraform apply
+
+# Copy install files to S3
+aws s3 cp --recursive "${script_dir}/../lib/files/" "s3://quick-net/deploy/cdr0-net/startup-scripts/"

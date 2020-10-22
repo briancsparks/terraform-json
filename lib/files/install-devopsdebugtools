@@ -1,0 +1,24 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+sudo apt-get install -y conntrack
+
+
+cat - << EOF
+Use the following commands:
+
+sudo conntrack -E -n
+
+sudo iptables -t nat -L -n -v
+sudo tcpdump -i ens5 -s 1500 port not 22 and port not 8301 and port not 8300
+
+ip route
+ip route list
+netstat -rn
+route -n
+EOF

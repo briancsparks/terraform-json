@@ -11,3 +11,11 @@ echo 'CDR0_HOSTNAME="8888888888888888888888888888"' >> /etc/environment
 echo "8888888888888888888888888888" > /etc/hostname
 echo "127.0.0.1 8888888888888888888888888888" >> /etc/hosts
 
+cat << EOF >> /home/ubuntu/bin/fix-unable-to-resolve-host
+/bin/bash -e
+echo "127.0.0.1 $(cat /etc/hostname)" | sudo tee -a /etc/hosts
+EOF
+chmod +x /home/ubuntu/bin/fix-unable-to-resolve-host
+chown ubuntu:ubuntu /home/ubuntu/bin/fix-unable-to-resolve-host
+
+
