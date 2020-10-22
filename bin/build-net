@@ -25,7 +25,8 @@ curr_dir="$(pwd)"
 mkdir -p build-tf && cd $_
 
 # Run the users scripts, and format for terraform
-node "${curr_dir}/$1" > ./intermediate.json
+# node "${curr_dir}/$1" > ./intermediate.json
+node "${curr_dir}/main.js" > ./intermediate.json
 tfjson-to-tf-json-files ./intermediate.json
 
 # TODO: Remove intermediate.json
