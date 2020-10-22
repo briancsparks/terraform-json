@@ -1,0 +1,193 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() {
+  errcho "$@"
+  exit 1
+}
+
+# chownmod root:root 0755 /etc/nginx/conf.d
+chownmod() {
+  user="$1"
+  shift
+  mode="$1"
+  shift
+
+  sudo chown "$user" $@
+  sudo chmod "$mode" $@
+}
+
+chownmodR() {
+  user="$1"
+  shift
+  mode="$1"
+  shift
+
+  sudo chown -R "$user" $@
+  sudo chmod -R "$mode" $@
+}
+
+# userdir root /etc/nginx/conf.d
+userxdir() {
+  user="$1"
+  shift
+  mode="$1"
+  shift
+
+  sudo mkdir -p $@
+  chownmod "${user}" "$mode" $@
+}
+
+# userfile root 0644 /etc/nginx/nginx.conf ${HOME}/bin/webtier/nginx.conf
+userxfile() {
+  user="$1"
+  mode="$2"
+  dst="$3"
+  src="$4"
+
+  userxdir "$user" 0755 "$(dirname $dst)"
+  sudo cp "$src" "$dst"
+  chownmod "${user}" "$mode" "$dst"
+}
+
+root_etc_dir() { userxdir "root:root" 0755 $@; }
+root_etc_file() { userxfile "root:root" 0644 "$1" "$2"; }
+
+www_dir() { userxdir "www-data:adm" 0755 $@; }
+www_file() { userxfile "www-data:adm" 0644 $@; }
+
+aws_s3_certs() {
+  domain="$1"
+  shift
+
+  sudo aws s3 cp "s3://z-cdr0-thinking/project/cdr0/front/le/certs/live/${domain}/fullchain.pem" \
+        "/etc/nginx/certs/live/${domain}/"
+  sudo aws s3 cp "s3://z-cdr0-thinking/project/cdr0/front/le/certs/live/${domain}/privkey.pem" \
+        "/etc/nginx/certs/live/${domain}/"
+}
+
+# ----- Install Nginx -----
+sudo apt-get install -y nginx
+
+# ----- Create Nginx Config Dirs -----
+
+# nginx.conf
+sudo aws s3 cp s3://z-cdr0-thinking/project/cdr0/front/conf/web-ingress/nginx.conf /etc/nginx/
+chownmod root:root 0644 /etc/nginx/nginx.conf
+
+root_etc_dir /etc/nginx/conf.d
+sudo touch /etc/nginx/conf.d/default.conf
+
+# Server defs
+sudo aws s3 sync s3://z-cdr0-thinking/project/cdr0/front/conf/web-ingress/conf.d/ /etc/nginx/conf.d/
+chownmod root:adm 0644 /etc/nginx/conf.d/*
+
+# TODO: remove hack
+sudo perl -pi -e 's/jenkins.i.cdr0.net/10.13.48.160/g' /etc/nginx/conf.d/upstream-jenkins-cdr0-net.conf
+sudo perl -pi -e 's/kato.i.cdr0.net/10.13.48.160/g'    /etc/nginx/conf.d/upstream-kato-cdr0-net.conf
+
+# Server certs
+root_etc_dir /etc/nginx/certs/live
+aws_s3_certs "api.cdr0.net"
+aws_s3_certs "cdr0.net"
+aws_s3_certs "jenkins.cdr0.net"
+aws_s3_certs "kato.cdr0.net"
+aws_s3_certs "trial.cdr0.net"
+chownmodR root:adm 0640  /etc/nginx/certs/live/*
+chownmod  root:adm 0750  /etc/nginx/certs/live
+chownmod  root:adm 0750  /etc/nginx/certs/live/*
+
+# Client certs
+root_etc_dir /etc/nginx/certs-client
+sudo aws s3 sync s3://z-cdr0-thinking/project/cdr0/front/le/certs-client/ /etc/nginx/certs-client/
+chownmod root:adm 0640 /etc/nginx/certs-client/*
+
+#root_etc_file /etc/nginx/conf.d/server-api-cdr0-net.conf "${script_dir}/sample-confs/server-api-cdr0-net.conf"
+#root_etc_file /etc/nginx/conf.d/default.conf "${script_dir}/sample-confs/default.conf"
+
+# Log dirs
+www_dir /var/log/nginx
+www_dir /var/log/nginx/api-cdr0-net
+www_dir /var/log/nginx/jenkins-cdr0-net
+www_dir /var/log/nginx/kato-cdr0-net
+www_dir /var/log/nginx/trial-cdr0-net
+
+# ----- Copy Nginx Snippets -----
+# TODO:
+root_etc_dir /etc/nginx/snippets
+sudo aws s3 sync s3://z-cdr0-thinking/project/cdr0/front/conf/web-ingress/snippets/ /etc/nginx/snippets/
+chownmod root:adm 0644 /etc/nginx/snippets/*
+
+
+#root_etc_file /etc/nginx/conf.d/cache-proxy-params "${script_dir}/webtier/cache-proxy-params"
+#root_etc_file /etc/nginx/conf.d/proxy-params "${script_dir}/webtier/proxy-params"
+#root_etc_file /etc/nginx/conf.d/rpxi-proxy-params "${script_dir}/webtier/rpxi-proxy-params"
+#root_etc_file /etc/nginx/conf.d/rpxi "${script_dir}/webtier/rpxi"
+
+## ----- Copy nginx conf -----
+## TODO
+#root_etc_file /etc/nginx/nginx.conf "${script_dir}/webtier/nginx.conf"
+
+# ----- Copy nginx template conf files -----
+# TODO
+#template:
+#  src: "{{ item }}"
+#  dest: /etc/nginx/conf.d/{{ item }}
+#  owner: root
+#  group: root
+#  mode: 0644
+#with_items:
+#  - default.conf
+
+# ----- Handlers --------------------------------
+# TODO
+
+#curl from the IP to see if nginx is up
+#/usr/bin/env nginx -t && /usr/bin/env nginx -s reload
+
+
+
+
+
+
+# ----- Create Nginx Content Dirs -----
+root_etc_dir /usr/share/nginx
+root_etc_dir /usr/share/nginx/html
+
+sudo aws s3 sync s3://z-cdr0-thinking/project/cdr0/front/sites/ /usr/share/nginx/
+
+
+# --language=<HTML>
+sudo tee /usr/share/nginx/html/index.html <<EOF
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using cdr0.net nginx.</em></p>
+</body>
+</html>
+
+EOF
+
+

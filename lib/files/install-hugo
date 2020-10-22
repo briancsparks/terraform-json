@@ -1,0 +1,19 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+# ----- Wait for Snap -----
+sudo snap wait system seed.loaded
+
+# ----- Hugo -----
+#sudo snap install hugo --channel=extended --classic    # Old
+sudo snap install hugo --channel=extended
+#sudo snap install hugo                                 # No Sass/SCSS
+
+# See: ~/dev/stack-cdr0/ansible/roles/cdr0_webtier/tasks/main.yaml for
+# a generation script
+

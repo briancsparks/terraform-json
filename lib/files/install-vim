@@ -1,0 +1,46 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+vimver="$(vim --version | grep ', compiled' | grep -E -o -i 'vim - vi improved \S+' | grep -E -o '[0-9]+\.[0-9]+')"
+if ! [[ $vimver =~ ^8[.] ]]; then
+  sudo add-apt-repository -y ppa:jonathonf/vim
+  sudo apt-get update
+  sudo apt-get install -y --no-install-recommends vim
+fi
+
+
+
+# ----- vimcat -----
+
+hash vimcat 2> /dev/null && exit 0
+
+if ! hash make 2> /dev/null; then
+  echo "Build tools are not installed. Use:"
+  echo "   apt-get install -y build-essential"
+  exit 99
+fi
+
+# pandoc and doctoc are optional.  Only install them if requested
+if [[ $1 == "--fat" ]]; then
+  sudo apt-get install -y pandoc
+
+  if hash npm; then
+    sudo npm install --global doctoc
+  fi
+fi
+
+# clone; make install
+mkdir -p "${HOME}/zz_packages/imstall_$$" && cd $_
+git clone git://github.com/rkitover/vimpager
+cd vimpager
+sudo make install-deb
+
+# Clean up
+cd "${HOME}/zz_packages"
+test -d "imstall_$$" && rm -rf "imstall_$$"
+

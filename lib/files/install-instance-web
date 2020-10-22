@@ -1,0 +1,26 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+# ----- Wait for Snap -----
+"${script_dir}/install-nodejs"
+"${script_dir}/install-aws"
+"${script_dir}/install-git"
+
+# ----- Intall nginx -----
+"${script_dir}/install-nginxwebtier"
+
+
+"${script_dir}/install-instance-all"
+
+
+## ----- Others? -----
+#"${script_dir}/install-hugo"
+#
+## ----- Node.js extra packages -----
+#sudo npm install -g pm2 node-sass jslint
+

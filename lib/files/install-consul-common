@@ -1,0 +1,47 @@
+#!/bin/bash -e
+
+# For now, just one Consul server
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+chownmod() {
+  user="$1"; shift
+  mode="$1"; shift
+
+  sudo chown "$user" $@
+  sudo chmod "$mode" $@
+
+  ls -l $@
+}
+
+# ---------------------------------------------------------------------------------------------------
+# We need the `consul` user to be created by now
+cat /etc/group | egrep '^consul' || die "must have a `consul` user"
+
+# If the `consul` user has not been created when you run this script, here is what to do:
+# sudo useradd --system --home /etc/consul.d --shell /bin/false consul
+
+
+# ---------------------------------------------------------------------------------------------------
+# Install consul binary, setup dirs
+sudo aws s3 cp "s3://quick-net/deploy/cdr0-net/consul_1.8.0_linux_amd64" "/usr/local/bin/consul"
+sudo chmod 755 /usr/local/bin/consul
+
+# Setup the `consul` user's files
+sudo mkdir -p /opt/consul
+
+# Setup /etc/consul.d
+chownmod consul:consul 775 /etc/consul.d/
+chownmod consul:consul 664 /etc/consul.d/consul.json
+#chownmod consul:consul 664 /etc/systemd/system/consul.service
+
+chownmod consul:consul 775 /opt/consul/
+
+#consul -autocomplete-install
+
+
+

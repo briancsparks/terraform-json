@@ -1,0 +1,39 @@
+#!/bin/bash -e
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+"${script_dir}/install-nodejs"
+"${script_dir}/install-aws"
+"${script_dir}/install-git"
+"${script_dir}/install-vault"
+"${script_dir}/install-consul-server"
+"${script_dir}/install-docker"
+
+"${script_dir}/install-instance-all"
+
+if ! docker network ls | grep -E localnet; then
+  docker network create localnet
+fi
+
+if ! docker ps | grep -E localmongodb; then
+  docker container run --network localnet --name localmongodb       -d -p 27017:27017   mongo:4.2-bionic
+fi
+
+if ! docker ps | grep -E localredisserver; then
+  docker container run --network localnet --name localredisserver   -d -p 6379:6379     redis:5-alpine
+fi
+
+if ! docker ps | grep -E localmemcached; then
+  docker container run --network localnet --name localmemcached     -d -p 11211:11211   memcached:1.6-alpine
+fi
+
+# TODO: move to env-var
+if ! docker ps | grep -E localmysql; then
+  docker container run --network localnet --name localmysql         -d -p 3306:3306     -e MYSQL_ROOT_PASSWORD=blue1234     mysql:5.7
+fi
+
+

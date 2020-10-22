@@ -1,0 +1,5 @@
+#!/bin/bash -e
+
+sudo apt-get install -y git
+
+# TODO: accept keys from github, ghe

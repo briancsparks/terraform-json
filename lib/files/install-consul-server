@@ -1,0 +1,86 @@
+#!/bin/bash -e
+
+# For now, just one Consul server
+
+readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+
+# ---------------------------------------------------------------------------------------------------
+# consul config file
+cat - << EOF | sed "s/unique_name/$(cat /etc/hostname | tr '-' '_')/" | sudo tee /etc/consul.d/consul.json
+{
+  "node_name":"unique_name",
+
+  "datacenter":"cdr0",
+  "data_dir":"/opt/consul",
+  "log_level":"DEBUG",
+  "bootstrap_expect": 3,
+  "encrypt":"QOHDMRF0TLJjxuw2IipWrwqbrTLKXOZui7K//ZH/xvI=",
+  "bind_addr":"{{ GetInterfaceIP \"ens5\" }}",
+  "performance": {
+    "raft_multiplier": 1
+  },
+  "server":true
+}
+EOF
+
+
+
+${script_dir}/install-consul-common $@
+
+
+
+# ---------------------------------------------------------------------------------------------------
+# Write systemd files
+sudo tee /etc/systemd/system/consul.service << EOF
+[Unit]
+Description="HashiCorp Consul - A service mesh solution"
+Documentation=https://www.consul.io/
+Requires=network-online.target
+After=network-online.target
+ConditionFileNotEmpty=/etc/consul.d/consul.json
+
+[Service]
+Type=notify
+User=consul
+Group=consul
+ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+ExecReload=/usr/local/bin/consul reload
+ExecStop=/usr/local/bin/consul leave
+KillMode=process
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+# ---------------------------------------------------------------------------------------------------
+cat - << EOF
+
+-----
+To start:
+
+consul validate /etc/consul.d/consul.json
+sudo systemctl enable consul
+sudo systemctl start  consul
+sudo systemctl status consul
+
+# others:
+ps aux | grep consul
+consul members
+consul monitor -log-level=trace
+consul reload
+consul leave
+
+# Permissions / ownership of files
+sudo ls -l `sudo find /opt -type f`
+
+EOF
+
+

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+apt-get update
+apt-get install -y curl tree zip unzip silversearcher-ag apt-transport-https gnupg2 htop
+
+mkdir -p /home/ubuntu/bin
+chown ubuntu:ubuntu /home/ubuntu/bin
+
+echo 'STACKNAME="7777777777777777777777777777"' >> /etc/environment
+echo 'CDR0_HOSTNAME="8888888888888888888888888888"' >> /etc/environment
+echo "8888888888888888888888888888" > /etc/hostname
+echo "127.0.0.1 8888888888888888888888888888" >> /etc/hosts
+
