@@ -1,10 +1,10 @@
 {
   "name": "terraform-json",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "",
   "bin": {
-    "tfjson-build-net": "bin/build-net",
-    "tfjson-teardown-net": "bin/teardown-net",
+    "tfjson-build": "bin/build-net",
+    "tfjson-teardown": "bin/teardown-net",
     "tfjson-to-tf-json-files": "bin/tfjson-to-tf-json-files"
   },
   "main": "index.js",
