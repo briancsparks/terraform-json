@@ -8,6 +8,15 @@ die() { errcho "$@"; exit 1; }
 
 # See: https://github.com/hashicorp/terraform-aws-vault/blob/master/modules/install-vault/install-vault
 
+cd /tmp/
+curl -sSL -o "vault.zip" "https://releases.hashicorp.com/vault/1.5.4/vault_1.5.4_linux_amd64.zip"
+unzip vault.zip
+chmod +x vault
+sudo mv vault /usr/local/bin
+
+
+exit 0
+
 
 readonly DOWNLOAD_PACKAGE_PATH="/tmp/vault.zip"
 readonly SYSTEM_BIN_DIR="/usr/local/bin"

@@ -40,5 +40,5 @@ echo "Using ${USE_SHELL} to execute: ${S3_PATH}..."
 echo "Press Ctrl-C to prevent"
 sleep 3
 
-aws s3 cp "$S3_PATH" - | $USE_SHELL
+aws s3 cp "s3://quick-net/deploy/cdr0-net/startup-scripts/${S3_PATH}" - | $USE_SHELL
 

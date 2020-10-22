@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
-script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+# readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+# script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
 
 errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
@@ -20,9 +20,18 @@ fi
 hash vimcat 2> /dev/null && exit 0
 
 if ! hash make 2> /dev/null; then
-  echo "Build tools are not installed. Use:"
+  echo ""
+  echo "Build tools are not installed!! Use:"
   echo "   apt-get install -y build-essential"
-  exit 99
+  echo ""
+  echo "or wait 3 seconds to have it installed automagically"
+  echo ""
+  echo ""
+
+  sleep 3
+
+  sudo apt-get install -y --no-install-recommends build-essential
+  # exit 99
 fi
 
 # pandoc and doctoc are optional.  Only install them if requested
