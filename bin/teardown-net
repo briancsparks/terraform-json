@@ -20,4 +20,3 @@ esac
 
 rm terraform.tf*
 rm *.tf.json
-rm *.json
