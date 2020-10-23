@@ -1,7 +1,21 @@
 #!/bin/bash -e
 
-sudo aws s3 cp s3://quick-net/deploy/cdr0-net/vault_1.4.2_linux_amd64 /usr/local/bin/vault
-sudo chmod 0755 /usr/local/bin/vault
+# Use an already unzipped version from our own S3
+function install_from_s3 {
+  sudo aws s3 cp s3://quick-net/deploy/cdr0-net/vault_1.4.2_linux_amd64 /usr/local/bin/vault
+  sudo chmod 0755 /usr/local/bin/vault
+}
+
+function add_hashicorp_apt_repository {
+  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+  sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+  sudo apt-get update
+
+  # sudo apt-cache policy consul
+  # sudo apt-get install consul=1.8.3
+  sudo apt-get install consul
+
+}
 
 
 
