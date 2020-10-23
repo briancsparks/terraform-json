@@ -199,8 +199,23 @@ sudo systemctl enable vault
 sudo systemctl start vault
 sudo systemctl status vault
 
+echo "Unseal the vault with:"
+echo ""
+echo "  vault operator unseal c96u8TI8kEEbfBqlZDGQnpH04rIlxynHZz+MPUJP3Isa"
+echo "  vault operator unseal ..."
+echo "  vault operator unseal ..."
+echo ""
+echo "Then, once its unsealed:"
+echo ""
+echo "  vault status -format=json | jq ."
+echo ""
+echo "Then, login:"
+echo ""
+echo "  vault login s.sUPEcL9F9TorK4s0mRPL7Fbq"
+echo ""
 
-vault status -format=json | jq .
+
+# vault status -format=json | jq .
 
 
 exit 0
