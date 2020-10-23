@@ -47,16 +47,16 @@ listener "tcp" {
 EOF
 }
 
-function create_vault_config_s3_json {
-  cat - << EOF | sudo tee /etc/vault.d/s3vault.json
-
 // See: https://blog.ruanbekker.com/blog/2019/05/06/setup-hashicorp-vault-server-on-docker-and-cli-guide/
 // See: https://blog.ruanbekker.com/blog/2019/05/07/persist-vault-data-with-amazon-s3-as-a-storage-backend/
+
+function create_vault_config_s3_json {
+  cat - << EOF | sudo tee /etc/vault.d/s3vault.json
 
 {
   "backend": {
     "s3": {
-      "region": "eu-west-1",
+      "region": "us-east-1",
       "bucket": "cdr0-vault"
     }
   },
@@ -72,12 +72,14 @@ function create_vault_config_s3_json {
 EOF
 }
 
+# ---------------------------------------------------------------------------------------------------------------------
 # TODO: make work with locations from create_vault_install_paths
+
+# See: https://blog.ruanbekker.com/blog/2019/05/06/setup-hashicorp-vault-server-on-docker-and-cli-guide/
+# See: https://blog.ruanbekker.com/blog/2019/05/07/persist-vault-data-with-amazon-s3-as-a-storage-backend/
+
 function create_vault_config_json {
   cat - << EOF | sudo tee /etc/vault.d/s3vault.json
-
-// See: https://blog.ruanbekker.com/blog/2019/05/06/setup-hashicorp-vault-server-on-docker-and-cli-guide/
-// See: https://blog.ruanbekker.com/blog/2019/05/07/persist-vault-data-with-amazon-s3-as-a-storage-backend/
 
 {
   "backend": {
@@ -133,7 +135,7 @@ cd /tmp/
 curl -sSL -o "vault.zip" "https://releases.hashicorp.com/vault/${VERSION}/vault_${VERSION}_linux_amd64.zip"
 unzip vault.zip
 chmod +x vault
-chown root:root vault
+sudo chown root:root vault
 sudo mv vault /usr/local/bin
 
 [[ -f vault.zip ]] && rm vault.zip
@@ -189,6 +191,17 @@ LimitMEMLOCK=infinity
 [Install]
 WantedBy=multi-user.target
 EOF
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Start systemd for vault server
+sudo systemctl enable vault
+sudo systemctl start vault
+sudo systemctl status vault
+
+
+vault status -format=json | jq .
+
 
 exit 0
 # *********************************************************************************************************************
@@ -285,7 +298,7 @@ function create_vault_install_paths {
   local -r path="$1"
   local -r username="$2"
 
-  log_info "Creating install dirs for Vault at $path"
+  echo "Creating install dirs for Vault at $path"
   sudo mkdir -p "$path"
   sudo mkdir -p "$path/bin"
   sudo mkdir -p "$path/config"
@@ -296,7 +309,7 @@ function create_vault_install_paths {
   sudo chmod 755 "$path/bin"
   sudo chmod 755 "$path/data"
 
-  log_info "Changing ownership of $path to $username"
+  echo "Changing ownership of $path to $username"
   sudo chown -R "$username:$username" "$path"
 }
 
