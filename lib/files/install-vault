@@ -47,8 +47,8 @@ listener "tcp" {
 EOF
 }
 
-// See: https://blog.ruanbekker.com/blog/2019/05/06/setup-hashicorp-vault-server-on-docker-and-cli-guide/
-// See: https://blog.ruanbekker.com/blog/2019/05/07/persist-vault-data-with-amazon-s3-as-a-storage-backend/
+# See: https://blog.ruanbekker.com/blog/2019/05/06/setup-hashicorp-vault-server-on-docker-and-cli-guide/
+# See: https://blog.ruanbekker.com/blog/2019/05/07/persist-vault-data-with-amazon-s3-as-a-storage-backend/
 
 function create_vault_config_s3_json {
   cat - << EOF | sudo tee /etc/vault.d/s3vault.json
