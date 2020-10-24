@@ -165,6 +165,8 @@ chmod +x /home/ubuntu/bin/save-iptables
 cat << EOF >> /home/ubuntu/bin/test-bastion
 #!/bin/bash -e
 
+sudo sysctl -q -w net.ipv4.ip_forward=1 net.ipv4.conf.${IFACE}.forwarding=1
+
 echo "Testing bastion capabilities..."
 
 echo ""

@@ -11,6 +11,54 @@ if ! [[ $vimver =~ ^8[.] ]]; then
   sudo add-apt-repository -y ppa:jonathonf/vim
   sudo apt-get update
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends vim
+
+
+  # ------------------------------------------------------------------------------------------------
+  # vimrc
+  cat << 'EOF' >> /home/ubuntu/.vimrc
+:let mapleader = ","
+:set nocompatible
+
+:set hidden
+:set showcmd
+:set nu
+:syntax on
+:set ruler
+:set clipboard=unnamed
+":set autoread
+highlight StatusLine ctermfg=blue ctermbg=yellow
+
+filetype plugin indent on
+
+" Whitespace
+:set nowrap
+:set tabstop=2
+:set shiftwidth=2
+:set expandtab
+:set smartindent
+:set backspace=indent,eol,start
+
+" Searching
+:set hlsearch
+:set incsearch
+:set ignorecase
+:set smartcase
+
+" Next / Previous tab
+:map <F7> :tabp<CR>
+:map <F8> :tabn<CR>
+
+" Open file from the same dir
+:map <Leader>e :e <C-R>=expand("%:p:h") . '/'<CR>
+
+" Clear search
+nmap <silent> ,. :nohlsearch<CR>
+
+:color desert
+
+EOF
+
+  chownmod ubuntu:ubuntu 0644 /home/ubuntu/.vimrc
 fi
 
 
