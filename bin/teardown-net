@@ -8,6 +8,13 @@ die() { errcho "$@"; exit 1; }
 
 [[ -f "build-tf/terraform.tfstate" ]] || die "Must be in data dir (has build-tf/terraform.tfstate)"
 
+read -p "Logged off of VPN? " yn
+
+case $yn in
+  [Yy]* ) echo "OK";;
+  * ) exit;;
+esac
+
 cd build-tf
 terraform destroy
 
