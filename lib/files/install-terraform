@@ -1,10 +1,15 @@
 #!/bin/bash -e
 
-readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
-script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
-
 errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
-sudo aws s3 cp s3://quick-net/deploy/cdr0-net/terraform_0.12.26_linux_amd64 /usr/local/bin/terraform
-sudo chmod +x /usr/local/bin/terraform
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Install vault from hashicorps apt repo
+curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends terraform
+
+
+
