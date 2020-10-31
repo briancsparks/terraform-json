@@ -1,0 +1,404 @@
+#!/bin/bash -e
+
+errcho() { echo "$@" 1>&2; }
+die() { errcho "$@"; exit 1; }
+
+# See: https://github.com/hashicorp/terraform-aws-vault/blob/master/modules/install-vault/install-vault
+
+export VERSION="1.5.4"
+
+user="vault"
+path="/opt/vault"
+
+# ---------------------------------------------------------------------------------------------------------------------
+function create_vault_config {
+  cat - << EOF | sudo tee /etc/vault.d/vault.hcl
+
+# See: https://blog.ruanbekker.com/blog/2019/05/06/setup-hashicorp-vault-server-on-docker-and-cli-guide/
+# See: https://blog.ruanbekker.com/blog/2019/05/07/persist-vault-data-with-amazon-s3-as-a-storage-backend/
+
+ui = true
+
+# From the vault-with-consul tutorial
+listener "tcp" {
+  address         = "0.0.0.0:8200"
+#  tls_cert_file   = "/path/to/fullchain.pem"
+#  tls_key_file    = "/path/to/privkey.pem"
+}
+
+# Requires Enterprise
+#seal "pkcs11" {
+#  lib            = "/usr/vault/lib/libCryptoki2_64.so"
+#  slot           = "0"
+#  pin            = "AAAA-BBBB-CCCC-DDDD"
+#  key_label      = "vault-hsm-key"
+#  hmac_key_label = "vault-hsm-hmac-key"
+#}
+
+# Not using consul yet
+#storage "consul" {
+#  address = "[consul address]"
+#  path = "vault/"
+#  token = "<TOKEN from Step 4 - #10>"
+#}
+
+# For HA
+#api_addr = "{{ full URL to Vault API endpoint }}"
+EOF
+}
+
+# See: https://blog.ruanbekker.com/blog/2019/05/06/setup-hashicorp-vault-server-on-docker-and-cli-guide/
+# See: https://blog.ruanbekker.com/blog/2019/05/07/persist-vault-data-with-amazon-s3-as-a-storage-backend/
+
+function create_vault_config_s3_json {
+  cat - << EOF | sudo tee /etc/vault.d/vault.json
+
+{
+  "backend": {
+    "s3": {
+      "region": "us-east-1",
+      "bucket": "cdr0-vault"
+    }
+  },
+  "listener": {
+    "tcp":{
+      "address": "0.0.0.0:8200",
+      "tls_disable": 1
+    }
+  },
+  "ui": true
+}
+
+EOF
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+# TODO: make work with locations from create_vault_install_paths
+
+# See: https://blog.ruanbekker.com/blog/2019/05/06/setup-hashicorp-vault-server-on-docker-and-cli-guide/
+# See: https://blog.ruanbekker.com/blog/2019/05/07/persist-vault-data-with-amazon-s3-as-a-storage-backend/
+
+function create_vault_config_json {
+  cat - << EOF | sudo tee /etc/vault.d/vault.json
+
+{
+  "backend": {
+    "file": {
+      "path": "/vault/file"
+    }
+  },
+  "listener": {
+    "tcp":{
+      "address": "0.0.0.0:8200",
+      "tls_disable": 1
+    }
+  },
+  "ui": true
+}
+
+EOF
+}
+
+# ---------------------------------------------------------------------------------------------------------------------
+function create_vault_install_paths {
+  local -r path="$1"
+  local -r username="$2"
+
+  echo "Creating install dirs for Vault at $path"
+  sudo mkdir -p "$path"
+  sudo mkdir -p "$path/bin"
+  sudo mkdir -p "$path/config"
+  sudo mkdir -p "$path/data"
+  sudo mkdir -p "$path/tls"
+  sudo mkdir -p "$path/scripts"
+  sudo chmod 755 "$path"
+  sudo chmod 755 "$path/bin"
+  sudo chmod 755 "$path/data"
+
+  echo "Changing ownership of $path to $username"
+  sudo chown -R "$username:$username" "$path"
+}
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Pre-requisites
+sudo apt-get update -y
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl unzip jq libcap2-bin
+
+create_vault_install_paths "$path" "$user"
+create_vault_config_s3_json
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# The vault binary - zip style
+if [[ -n $DO_NOT_EXIST ]]; then
+  cd /tmp/
+  curl -sSL -o "vault.zip" "https://releases.hashicorp.com/vault/${VERSION}/vault_${VERSION}_linux_amd64.zip"
+  unzip vault.zip
+  chmod +x vault
+  sudo chown root:root vault
+  sudo mv vault /usr/local/bin
+
+  [[ -f vault.zip ]] && rm vault.zip
+fi
+
+# ---------------------------------------------------------------------------------------------------------------------
+# The vault binary - via apt
+if [[ -z $DO_NOT_EXIST ]]; then
+  curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+  sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+
+  sudo apt-get install -y vault
+fi
+
+# ---------------------------------------------------------------------------------------------------------------------
+# mlock
+sudo setcap cap_ipc_lock=+ep $(readlink -f $(which vault))
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Configure systemd
+sudo touch /etc/systemd/system/vault.service
+
+cat << EOF | sudo tee -a /etc/systemd/system/vault.service
+
+[Unit]
+Description="HashiCorp Vault - A tool for managing secrets"
+Documentation=https://www.vaultproject.io/docs/
+Requires=network-online.target
+After=network-online.target
+#ConditionFileNotEmpty=/etc/vault.d/vault.hcl
+ConditionFileNotEmpty=/etc/vault.d/vault.json
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+User=vault
+Group=vault
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+SecureBits=keep-caps
+AmbientCapabilities=CAP_IPC_LOCK
+Capabilities=CAP_IPC_LOCK+ep
+CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
+NoNewPrivileges=yes
+#ExecStart=/usr/local/bin/vault server -config=/etc/vault.d/vault.hcl
+ExecStart=/usr/local/bin/vault server -config=/etc/vault.d/vault.json
+ExecReload=/bin/kill --signal HUP $MAINPID
+KillMode=process
+KillSignal=SIGINT
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+StartLimitInterval=60
+StartLimitIntervalSec=60
+StartLimitBurst=3
+LimitNOFILE=65536
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Start systemd for vault server
+sudo systemctl enable vault
+sudo systemctl start vault
+sudo systemctl status vault
+
+echo "Unseal the vault with:"
+echo ""
+echo "  vault operator unseal c96u8TI8kEEbfBqlZDGQnpH04rIlxynHZz+MPUJP3Isa"
+echo "  vault operator unseal ..."
+echo "  vault operator unseal ..."
+echo ""
+echo "Then, once its unsealed:"
+echo ""
+echo "  vault status -format=json | jq ."
+echo ""
+echo "Then, login:"
+echo ""
+echo "  vault login s.sUPEcL9F9TorK4s0mRPL7Fbq"
+echo ""
+
+
+# vault status -format=json | jq .
+
+
+exit 0
+# *********************************************************************************************************************
+
+
+
+
+# ## Notes:
+#
+# With vault running on a non-public subnet at 10.23.0.32, and doing the following from my laptop, with VPN running.
+
+
+# 19958  export VAULT_ADDR="http://10.23.0.32:8200"
+# 19959  vault operator init -key-shares=6 -key-threshold=3
+
+#
+# Unseal Key 1: c96u8TI8kEEbfBqlZDGQnpH04rIlxynHZz+MPUJP3Isa
+# Unseal Key 2: HUTnzKmh3CpNzky3x3eQrtIJkql4/CAK2DFl5DeMOG1v
+# Unseal Key 3: RgjsQCt9/A2BxAKqCNKl3lz48AQAptgekQX+WgoaelXx
+# Unseal Key 4: 60IV2rBbnqB1uVQxba9+QLrs2Y+HPgyEfEPAkTLHWoGK
+# Unseal Key 5: hbaG6UVtBUyH6vV570c+01rgcBk4SP6k1u78K3ebEmtt
+# Unseal Key 6: uynRwGXeF4IsanSBxrfGp+/V9JL92mw9f7X4SlvZ5G+X
+#
+# Initial Root Token: s.sUPEcL9F9TorK4s0mRPL7Fbq
+#
+# Vault initialized with 6 key shares and a key threshold of 3. Please securely
+# distribute the key shares printed above. When the Vault is re-sealed,
+# restarted, or stopped, you must supply at least 3 of these keys to unseal it
+# before it can start servicing requests.
+#
+# Vault does not store the generated master key. Without at least 3 key to
+# reconstruct the master key, Vault will remain permanently sealed!
+#
+# It is possible to generate new unseal keys, provided you have a quorum of
+# existing unseal keys shares. See "vault operator rekey" for more information.
+
+# 19960  vault operator unseal c96u8TI8kEEbfBqlZDGQnpH04rIlxynHZz+MPUJP3Isa
+# 19961  vault operator unseal HUTnzKmh3CpNzky3x3eQrtIJkql4/CAK2DFl5DeMOG1v
+# 19962  vault operator unseal RgjsQCt9/A2BxAKqCNKl3lz48AQAptgekQX+WgoaelXx
+
+# 19963  vault status -format=json
+# 19964  vault status -format=json | jq .
+# 19965  vault login s.sUPEcL9F9TorK4s0mRPL7Fbq
+# 19966  vault secrets enable -version=1 -path=secret kv
+
+# Can open in Chrome: http://10.23.0.32:8200/ui
+
+# 19967  vault kv put secret/cdr0-net/pw pw=123456
+# 19968  vault kv list secret/
+# 19969  vault kv get cdr0-net/
+# 19970  vault kv get secret/cdr0-net
+# 19971  vault kv get secret/cdr0-net/
+# 19972  vault kv get secret/cdr0-net/pw
+# 19973  vault kv get secret/cdr0-net/pw --format=json
+# 19974  vault kv get --format=json secret/cdr0-net/pw
+# 19975  vault kv get --format=json secret/cdr0-net/pw | jq .
+# 19976  vault kv get -field=pw secret/cdr0-net/pw
+# 19977  vault kv get --field=pw secret/cdr0-net/pw
+# 19978  vault kv put secret/reminders/app db_username=db.ruanbekker.com username=root password=secret
+# 19979  vault kv get --format=json secret/reminders/app
+# 19980  vault kv get --format=json secret/reminders/app | jq .
+# 19981  vault kv delete secret/reminders
+
+
+
+
+
+
+readonly DOWNLOAD_PACKAGE_PATH="/tmp/vault.zip"
+readonly SYSTEM_BIN_DIR="/usr/local/bin"
+
+
+
+# For more info, see: https://www.vaultproject.io/docs/configuration/#disable_mlock
+function configure_mlock {
+  echo "Giving Vault permission to use the mlock syscall"
+  # Requires installing libcap2-bin on Ubuntu 18
+  sudo setcap cap_ipc_lock=+ep $(readlink -f $(which vault))
+}
+
+
+function create_vault_user {
+  local -r username="$1"
+
+  if $(user_exists "$username"); then
+    echo "User $username already exists. Will not create again."
+  else
+    log_info "Creating user named $username"
+    sudo useradd --system "$username"
+  fi
+}
+
+function create_vault_install_paths {
+  local -r path="$1"
+  local -r username="$2"
+
+  echo "Creating install dirs for Vault at $path"
+  sudo mkdir -p "$path"
+  sudo mkdir -p "$path/bin"
+  sudo mkdir -p "$path/config"
+  sudo mkdir -p "$path/data"
+  sudo mkdir -p "$path/tls"
+  sudo mkdir -p "$path/scripts"
+  sudo chmod 755 "$path"
+  sudo chmod 755 "$path/bin"
+  sudo chmod 755 "$path/data"
+
+  echo "Changing ownership of $path to $username"
+  sudo chown -R "$username:$username" "$path"
+}
+
+function fetch_binary {
+  local -r version="$1"
+  local download_url="$2"
+
+  if [[ -z "$download_url" && -n "$version" ]];  then
+    download_url="https://releases.hashicorp.com/vault/${version}/vault_${version}_linux_amd64.zip"
+  fi
+
+  retry \
+    "curl -o '$DOWNLOAD_PACKAGE_PATH' '$download_url' --location --silent --fail --show-error" \
+    "Downloading Vault to $DOWNLOAD_PACKAGE_PATH"
+}
+
+function install_binary {
+  local -r install_path="$1"
+  local -r username="$2"
+
+  local -r bin_dir="$install_path/bin"
+  local -r vault_dest_path="$bin_dir/vault"
+  local -r run_vault_dest_path="$bin_dir/run-vault"
+
+  unzip -d /tmp "$DOWNLOAD_PACKAGE_PATH"
+
+  log_info "Moving Vault binary to $vault_dest_path"
+  sudo mv "/tmp/vault" "$vault_dest_path"
+  sudo chown "$username:$username" "$vault_dest_path"
+  sudo chmod a+x "$vault_dest_path"
+
+  local -r symlink_path="$SYSTEM_BIN_DIR/vault"
+  if [[ -f "$symlink_path" ]]; then
+    log_info "Symlink $symlink_path already exists. Will not add again."
+  else
+    log_info "Adding symlink to $vault_dest_path in $symlink_path"
+    sudo ln -s "$vault_dest_path" "$symlink_path"
+  fi
+
+  log_info "Copying Vault run script to $run_vault_dest_path"
+  sudo cp "$SCRIPT_DIR/../run-vault/run-vault" "$run_vault_dest_path"
+  sudo chown "$username:$username" "$run_vault_dest_path"
+  sudo chmod a+x "$run_vault_dest_path"
+}
+
+
+
+
+
+
+#  Main
+
+# ??????
+user="vault"
+path="/opt/vault"
+
+
+# Now, install
+sudo apt-get update -y
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl unzip jq libcap2-bin
+
+create_vault_user "$user"
+create_vault_install_paths "$path" "$user"
+fetch_binary "$version" "$download_url"
+install_binary "$path" "$user"
+configure_mlock
+
