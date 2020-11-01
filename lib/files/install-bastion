@@ -1,15 +1,15 @@
 #!/bin/bash -e
 
-readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
-script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
+# readlink_f() { which greadlink > /dev/null && greadlink -f $1 || readlink -f $1; }
+# script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
 
 errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
 IFACE="ens5"
 
-"${script_dir}/install-nodejs"
-"${script_dir}/install-aws"
+# "${script_dir}/install-nodejs"
+# "${script_dir}/install-aws"
 #"${script_dir}/install-openvpn"
 #"${script_dir}/install-consul-server"
 

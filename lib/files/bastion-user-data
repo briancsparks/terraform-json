@@ -1,21 +1,52 @@
 #!/bin/bash
 
-apt-get update
-apt-get install -y curl tree zip unzip silversearcher-ag apt-transport-https gnupg2 htop
+## Just a generic user-data
 
+## ----------------------------------------------------------------------------------
+# The MongoDB version we want
+MONGO_VERSION="4.4"
+
+## ----------------------------------------------------------------------------------
+echo 'STACKNAME="___ADJ___"'            >> /etc/environment
+echo 'CDR0_HOSTNAME="___HOSTNAME___"'   >> /etc/environment
+echo "___HOSTNAME___"                   >  /etc/hostname
+echo "127.0.0.1 ___HOSTNAME___"         >> /etc/hosts
+
+## ----------------------------------------------------------------------------------
+echo 'export STACKNAME="___ADJ___"'            >> /home/ubuntu/stack-env
+echo 'export CDR0_HOSTNAME="___HOSTNAME___"'   >> /home/ubuntu/stack-env
+
+## ----------------------------------------------------------------------------------
+## MongoDB keyserver, and package list
+## apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 656408E390CFB1F5
+## echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/${MONGO_VERSION} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb.list
+
+## ----------------------------------------------------------------------------------
+# Install!
+apt-get update
+apt-get install -y --no-install-recommends \
+    curl tree zip unzip silversearcher-ag apt-transport-https gnupg2 htop \
+    libcurl3 \
+    redis-tools
+
+
+
+
+## ----------------------------------------------------------------------------------
+# Clean up the bin dir
 mkdir -p /home/ubuntu/bin
 chown ubuntu:ubuntu /home/ubuntu/bin
 
-echo 'STACKNAME="7777777777777777777777777777"' >> /etc/environment
-echo 'CDR0_HOSTNAME="8888888888888888888888888888"' >> /etc/environment
-echo "8888888888888888888888888888" > /etc/hostname
-echo "127.0.0.1 8888888888888888888888888888" >> /etc/hosts
 
-cat << EOF >> /home/ubuntu/bin/fix-unable-to-resolve-host
-/bin/bash -e
-echo "127.0.0.1 $(cat /etc/hostname)" | sudo tee -a /etc/hosts
-EOF
-chmod +x /home/ubuntu/bin/fix-unable-to-resolve-host
-chown ubuntu:ubuntu /home/ubuntu/bin/fix-unable-to-resolve-host
+
+
+
+## ----------------------------------------------------------------------------------
+## cat << EOF >> /home/ubuntu/bin/fix-unable-to-resolve-host
+## /bin/bash -e
+## echo "127.0.0.1 $(cat /etc/hostname)" | sudo tee -a /etc/hosts
+## EOF
+## chmod +x /home/ubuntu/bin/fix-unable-to-resolve-host
+## chown ubuntu:ubuntu /home/ubuntu/bin/fix-unable-to-resolve-host
 
 

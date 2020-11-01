@@ -6,17 +6,17 @@ script_dir="$( cd "$(dirname "$( readlink_f "${BASH_SOURCE[0]}" )" )" && pwd )"
 errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
-"${script_dir}/install-nodejs"
-"${script_dir}/install-aws"
+# "${script_dir}/install-nodejs"
+# "${script_dir}/install-aws"
+# "${script_dir}/install-utilclients"
 "${script_dir}/install-git"
 #"${script_dir}/install-vault"
-#"${script_dir}/install-docker"
-"${script_dir}/install-utilclients"
 #"${script_dir}/install-consul-server"
 
-#if ! docker network ls | grep -E localnet; then
-#  docker network create localnet
-#fi
+"${script_dir}/install-docker"
+if ! docker network ls | grep -E localnet; then
+ docker network create localnet
+fi
 
 ## TODO: compilers, etc
 #"${script_dir}/install-devtools"

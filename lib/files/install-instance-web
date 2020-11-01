@@ -7,8 +7,8 @@ errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
 # ----- Wait for Snap -----
-"${script_dir}/install-nodejs"
-"${script_dir}/install-aws"
+# "${script_dir}/install-nodejs"
+# "${script_dir}/install-aws"
 "${script_dir}/install-git"
 
 # ----- Intall nginx -----

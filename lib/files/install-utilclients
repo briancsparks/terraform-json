@@ -6,4 +6,16 @@ die() { errcho "$@"; exit 1; }
 # idempotence
 which mongo && exit 0
 
-sudo apt-get install -y libcurl3 mongodb-clients redis-tools
+# The MongoDB version we want
+MONGO_VERSION="4.4"
+
+sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 656408E390CFB1F5
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/${MONGO_VERSION} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb.list
+
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    libcurl3 \
+    mongodb-org-shell \
+    mongodb-org-tools \
+    mongodb-org-mongos \
+    redis-tools

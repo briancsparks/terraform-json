@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-errcho() { echo "$@" 1>&2; }
+xerrcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
 # idempotence
