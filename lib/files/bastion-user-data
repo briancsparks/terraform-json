@@ -3,10 +3,6 @@
 ## Just a generic user-data
 
 ## ----------------------------------------------------------------------------------
-# The MongoDB version we want
-MONGO_VERSION="4.4"
-
-## ----------------------------------------------------------------------------------
 echo 'STACKNAME="___ADJ___"'            >> /etc/environment
 echo 'CDR0_HOSTNAME="___HOSTNAME___"'   >> /etc/environment
 echo "___HOSTNAME___"                   >  /etc/hostname
@@ -19,7 +15,7 @@ echo 'export CDR0_HOSTNAME="___HOSTNAME___"'   >> /home/ubuntu/stack-env
 ## ----------------------------------------------------------------------------------
 ## MongoDB keyserver, and package list
 ## apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 656408E390CFB1F5
-## echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/${MONGO_VERSION} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb.list
+## echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/4.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb.list
 
 ## ----------------------------------------------------------------------------------
 # Install!

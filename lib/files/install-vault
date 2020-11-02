@@ -212,11 +212,12 @@ function install_from_s3 {
 
 
 
+exit 0
 
-# export VAULT_ADDR="http://10.23.0.32:8200"
-# vault operator unseal c96u8TI8kEEbfBqlZDGQnpH04rIlxynHZz+MPUJP3Isa
-# vault operator unseal HUTnzKmh3CpNzky3x3eQrtIJkql4/CAK2DFl5DeMOG1v
-# vault operator unseal RgjsQCt9/A2BxAKqCNKl3lz48AQAptgekQX+WgoaelXx
-# vault login s.sUPEcL9F9TorK4s0mRPL7Fbq
-# vault kv list secret/
-# vault kv get --format=json secret/cdr0-net/pw | jq .
+export VAULT_ADDR="http://10.23.0.32:8200"
+vault operator unseal c96u8TI8kEEbfBqlZDGQnpH04rIlxynHZz+MPUJP3Isa
+vault operator unseal HUTnzKmh3CpNzky3x3eQrtIJkql4/CAK2DFl5DeMOG1v
+vault operator unseal RgjsQCt9/A2BxAKqCNKl3lz48AQAptgekQX+WgoaelXx
+vault login s.sUPEcL9F9TorK4s0mRPL7Fbq
+vault kv list secret/
+vault kv get --format=json secret/cdr0-net/pw | jq .
