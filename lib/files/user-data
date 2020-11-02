@@ -22,11 +22,12 @@ echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release
 apt-get update
 apt-get install -y --no-install-recommends \
     curl tree zip unzip silversearcher-ag apt-transport-https gnupg2 htop \
-    libcurl3 \
     redis-tools \
     mongodb-org-shell \
     mongodb-org-tools \
-    mongodb-org-mongos \
+    mongodb-org-mongos
+
+[[ "$(lsb_release -cs)" == "xenial" ]] && apt-get install -y --no-install-recommends libcurl3
 
 ## ----------------------------------------------------------------------------------
 # Clean up the bin dir

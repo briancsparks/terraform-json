@@ -22,9 +22,9 @@ echo 'export CDR0_HOSTNAME="___HOSTNAME___"'   >> /home/ubuntu/stack-env
 apt-get update
 apt-get install -y --no-install-recommends \
     curl tree zip unzip silversearcher-ag apt-transport-https gnupg2 htop \
-    libcurl3 \
     redis-tools
 
+[[ "$(lsb_release -cs)" == "xenial" ]] && apt-get install -y --no-install-recommends libcurl3
 
 
 
