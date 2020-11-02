@@ -1,6 +1,6 @@
 {
   "name": "terraform-json",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "description": "",
   "bin": {
     "tfjson-build": "bin/build-net",

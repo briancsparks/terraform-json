@@ -20,9 +20,9 @@ if ! docker network ls | grep -E localnet; then
   docker network create localnet
 fi
 
-if ! docker ps | grep -E localmongodb; then
-  docker container run --network localnet --name localmongodb       -d -p 27017:27017   mongo:4.2-bionic
-fi
+# if ! docker ps | grep -E localmongodb; then
+#   docker container run --network localnet --name localmongodb       -d -p 27017:27017   mongo:4.2-bionic
+# fi
 
 if ! docker ps | grep -E localredisserver; then
   docker container run --network localnet --name localredisserver   -d -p 6379:6379     redis:5-alpine
