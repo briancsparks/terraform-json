@@ -89,11 +89,6 @@ sudo apt-get update -y
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl unzip jq libcap2-bin
 
 # ---------------------------------------------------------------------------------------------------------------------
-# mlock
-sudo setcap cap_ipc_lock=+ep $(readlink -f $(which vault))
-
-
-# ---------------------------------------------------------------------------------------------------------------------
 # Install vault from hashicorps apt repo
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
 sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
@@ -110,6 +105,11 @@ sudo apt-get install -y --no-install-recommends vault
 # └── vault.hcl
 
 # The vault.hcl is setup to store data in file at /opt/vault/data, and to use the cert
+
+# ---------------------------------------------------------------------------------------------------------------------
+# mlock
+sudo setcap cap_ipc_lock=+ep $(readlink -f $(which vault))
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Replace vault.hcl with vault.json
