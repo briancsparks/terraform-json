@@ -3,9 +3,13 @@
 errcho() { echo "$@" 1>&2; }
 die() { errcho "$@"; exit 1; }
 
-# https://raw.githubusercontent.com/username/path/to/script
+# https://github.com/username/path/to/script
 #
-# https://raw.githubusercontent.com/ username/path/to/script
+# https://raw.githubusercontent.com/ username package branch /path/to/script
+#
+# https://raw.githubusercontent.com/username/package/branch/path/to/script
+
 
 RAW_LOCATION="$1"
 curl -sSL "https://raw.githubusercontent.com/${RAW_LOCATION}" | grep -E -v '#!/bin/bash' | /bin/bash
+
